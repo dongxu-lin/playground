@@ -1,0 +1,20 @@
+@startuml
+
+actor "Batch Refund Job"
+entity "payment Service"
+database "Upload S3 Bucket"
+
+autonumber
+
+== Refund ==
+
+"Batch Refund Job" -> "Upload S3 Bucket": CreateUpload request
+
+== Reconcile ==
+
+"Batch Refund Job" -> "Upload S3 Bucket": Search request
+
+== Output ==
+
+
+@enduml
