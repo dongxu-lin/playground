@@ -1,20 +1,53 @@
 @startuml
 
-actor "Batch Refund Job"
-entity "payment Service"
-database "Upload S3 Bucket"
+box Batch Refund Job
+participant "Main"
+participant "refund processor"
+end box
+entity "payment service"
+database "S3 Bucket"
+entity "datadog"
 
 autonumber
 
+== Get Input ==
+
+"Main" -> "S3 Bucket": Get input file
+"S3 Bucket" -> "Main": return input file
+
+loop number of retries
+"Main"->"refund processor": process_refund([], to_be_refund_records)
 == Refund ==
 
-"Batch Refund Job" -> "Upload S3 Bucket": CreateUpload request
+loop number of refund records
+"refund processor" -> "payment service": Call refundPayment api
+"payment service" -> "refund processor": refund response
 
-== Reconcile ==
+alt refund successful
+"refund processor" -> "refund processor": write to list of successful records
+else refund failed
+"refund processor" -> "refund processor": write to list of temp failed records
+end
+end
 
-"Batch Refund Job" -> "Upload S3 Bucket": Search request
+"refund processor" -> "refund processor": sleep for 1m(not a final number)
+loop number of temp failed records
 
+"refund processor" -> "payment service": call searchOrderHistory(digital_ad_id)
+"payment service" -> "refund processor": return a list of orders containing the transaction&refund information
+
+alt REFUND_PROCESSED exist
+"refund processor" -> "refund processor": write to list of successful records
+else REFUND_PROCESSED not exist
+"refund processor" -> "refund processor": write to list of failed records
+end
+end
+
+"refund processor" -> "Main": res<successful_records, failed_records>
+
+end
 == Output ==
+"Main" -> "S3 Bucket": Write separate output for successful refund and failed refund
 
 
 @enduml
